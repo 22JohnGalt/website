@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Early — The Bitcoin Mortgage | Become a Wholecoiner</title>
+<meta name="description" content="The first EU-regulated fixed-rate installment loan to buy 1 full Bitcoin. No liquidation risk. No margin calls.">
+<style>
+  :root{ --bg:#060606; --panel:#0e0e0e; --line:#1f1f1f; --txt:#f5f2ea; --mut:#a8a29e; --acc:#f7931a; --acc2:#ffb74d; }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif;background:var(--bg);color:var(--txt);line-height:1.6;overflow-x:hidden}
+  a{color:inherit}
+  nav.glass-nav{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;justify-content:space-between;align-items:center;padding:.5rem 1.5rem;background:rgba(6,6,6,.72);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  nav .brand{font-weight:800;letter-spacing:.02em} nav .brand span{color:var(--acc)}
+  nav .btn{padding:.5rem 1rem;font-size:.85rem}
+  .brand-logo{display:block;height:26px;width:auto}
+  nav .links{display:flex;gap:1.2rem;font-size:.9rem;color:var(--mut)} nav .links a{text-decoration:none} nav .links a:hover{color:#fff}
+  .btn{display:inline-block;background:var(--acc);color:#000;font-weight:700;padding:.8rem 1.4rem;border-radius:999px;text-decoration:none;border:0;cursor:pointer}
+  .btn.ghost{background:transparent;color:#fff;border:1px solid #333}
+  /* CHANGED: progress via transform (no layout) instead of width% */
+  .progress{position:fixed;top:0;left:0;height:3px;width:100%;background:var(--acc);z-index:30;transform-origin:0 50%;transform:scaleX(0)}
+  .scrub-wrap{height:800vh;position:relative}
+  .sticky{position:sticky;top:0;height:100vh;overflow:hidden;background:#000}
+  /* CHANGED: stable video — no per-frame filter, GPU layer, fixed aspect to avoid shift */
+  video.bg{width:100%;height:100%;object-fit:cover;display:block;background:#000;transform:translateZ(0);backface-visibility:hidden}
+  .shade{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.55),rgba(0,0,0,.2) 35%,rgba(0,0,0,.35) 65%,var(--bg) 98%);pointer-events:none}
+  .hero-copy{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:6rem 1.5rem 3.5rem;max-width:72rem;margin:0 auto}
+  .pill{display:inline-block;font-size:.78rem;border:1px solid #333;border-radius:999px;padding:.35rem .8rem;color:var(--mut);margin-bottom:1rem;background:rgba(0,0,0,.5)}
+  .pill b{color:var(--acc)}
+  h1{font-size:clamp(2.4rem,6.5vw,4.8rem);line-height:1.02;letter-spacing:-.02em;max-width:16ch}
+  h1 em{color:var(--acc);font-style:normal}
+  .sub{margin-top:1rem;max-width:42rem;color:#e7e5e4;font-size:clamp(1rem,2vw,1.2rem)}
+  .cta-row{display:flex;gap:.8rem;margin-top:1.5rem;flex-wrap:wrap}
+  .stats{display:flex;gap:2rem;margin-top:2rem;flex-wrap:wrap;color:var(--mut);font-size:.9rem} .stats b{display:block;color:#fff;font-size:1.25rem}
+  /* CHANGED: respect reduced motion for non-essential shimmer */
+  @media (prefers-reduced-motion: reduce){
+    .progress{display:none}
+  }
+
+  /* ADDITIVE (glass + foreground motion only — background animation rules above untouched) */
+  nav.glass-nav{background:rgba(12,12,12,.42);-webkit-backdrop-filter:blur(14px) saturate(1.25);backdrop-filter:blur(14px) saturate(1.25);border-bottom:1px solid rgba(255,255,255,.09)}
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    nav.glass-nav{background:rgba(10,10,10,.88)}
+  }
+  .glass-panel{background:rgba(12,12,12,.38);border:1px solid rgba(255,255,255,.10);border-radius:18px;-webkit-backdrop-filter:blur(16px) saturate(1.25);backdrop-filter:blur(16px) saturate(1.25);box-shadow:0 12px 40px rgba(0,0,0,.35);padding:clamp(1.1rem,3vw,1.8rem)}
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    .glass-panel{background:rgba(8,8,8,.80)}
+  }
+  .hero-glass{max-width:36rem;padding:clamp(.9rem,2.2vw,1.3rem)}
+  .h1-top{display:block;font-weight:400;font-size:clamp(1.4rem,3.2vw,2.3rem);white-space:nowrap}
+  h1 em{display:block;font-weight:800}
+  .hero-glass h1{text-shadow:0 2px 24px rgba(0,0,0,.45)}
+  .hero-glass .sub{text-shadow:0 1px 12px rgba(0,0,0,.5)}
+  a.btn.glass-button{border:1px solid rgba(255,255,255,.18);box-shadow:0 6px 24px rgba(247,147,26,.28),inset 0 1px 0 rgba(255,255,255,.25)}
+  .glass-stats{background:rgba(12,12,12,.30);border:1px solid rgba(255,255,255,.08);border-radius:14px;-webkit-backdrop-filter:blur(12px) saturate(1.2);backdrop-filter:blur(12px) saturate(1.2);padding:.9rem 1.1rem;align-self:flex-start;max-width:100%}
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    .glass-stats{background:rgba(8,8,8,.72)}
+  }
+  /* ADDITIVE: foreground scroll-linked motion (transform/opacity only, staggered via --fp) */
+  .hero-copy{--fp:0}
+  .hero-copy>[data-fx]{will-change:transform,opacity}
+  @media (prefers-reduced-motion: no-preference){
+    .hero-copy>[data-fx]{animation:fx-in .8s cubic-bezier(.2,.7,.2,1) backwards}
+    .hero-copy>[data-fx="2"]{animation-delay:.12s}
+    .hero-copy>[data-fx="3"]{animation-delay:.24s}
+    .hero-copy>[data-fx="1"]{opacity:calc(1 - var(--fp));transform:translate3d(0,calc(var(--fp)*-46px),0)}
+    .hero-copy>[data-fx="2"]{opacity:calc(1 - var(--fp));transform:translate3d(0,calc(var(--fp)*-70px),0)}
+    .hero-copy>[data-fx="3"]{opacity:calc(1 - var(--fp));transform:translate3d(0,calc(var(--fp)*-96px),0)}
+  }
+  @keyframes fx-in{from{opacity:0;transform:translate3d(0,18px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
+  @media (prefers-reduced-motion: reduce){
+    .hero-copy>[data-fx]{animation:none;opacity:1;transform:none}
+  }
+  /* ADDITIVE: touch devices get solid fills instead of live blur (GPU relief; desktop glass untouched) */
+  .lite-glass nav.glass-nav,.lite-glass .glass-panel,.lite-glass .glass-stats,.lite-glass .hero-end-card{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(8,8,8,.86)}
+  .lite-glass .glass-stats{background:rgba(8,8,8,.82)}
+  /* ADDITIVE: black placeholder section below the scrub (fill in later) */
+  .next-section{background:#000;min-height:100vh;content-visibility:auto;contain-intrinsic-size:auto 900px}
+
+  /* ADDITIVE: BTC-vs-Euro brick-breaker — self-contained, existing rules above untouched.
+     Adapted from departure-mono "Deparkanoid" (MIT (c) Helena Zhang & Tobias Fried). */
+  .bb-game-sec{max-width:880px;margin:0 auto;padding:4rem 1.5rem 5rem;color:var(--txt)}
+  .bb-title{font-size:clamp(1.5rem,3.5vw,2.2rem);letter-spacing:-.01em;margin-bottom:1.5rem}
+  .bb-canvas-wrap{max-width:100%}
+  #bb-game{display:block;width:100%;height:auto;aspect-ratio:880/600;background:#000;border:1px solid var(--line);border-radius:8px;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:pan-y}
+  #bb-game:focus-visible{outline:2px solid var(--acc);outline-offset:4px}
+  .bb-status{margin:1rem 0 .8rem;color:var(--mut);font-size:.95rem;min-height:1.6em}
+  /* ADDITIVE: site footer below the game */
+  .site-footer{background:#000;border-top:1px solid var(--line);content-visibility:auto;contain-intrinsic-size:auto 260px}
+  .site-footer-inner{max-width:880px;margin:0 auto;padding:2.5rem 1.5rem 3rem;display:flex;flex-wrap:wrap;gap:1rem 2rem;align-items:center;justify-content:space-between}
+  .site-footer-links{display:flex;flex-wrap:wrap;gap:.4rem 1.4rem;width:100%;justify-content:space-between}
+  .site-footer-links a{color:var(--mut);text-decoration:none;font-size:.9rem}
+  .site-footer-links a:hover{color:#fff}
+  .site-footer-fine{width:100%;margin-top:.5rem;color:var(--mut);font-size:.78rem;opacity:.8}
+  /* ADDITIVE: end-of-scrub card — fades in via the existing --fp scroll variable */
+  .hero-end{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:flex-end;padding:0 1.5rem 3.5rem;pointer-events:none}
+  .hero-end-card{max-width:44rem;text-align:center;font-size:clamp(1.15rem,2.4vw,1.6rem);line-height:1.35;background:rgba(12,12,12,.38);border:1px solid rgba(255,255,255,.10);border-radius:18px;-webkit-backdrop-filter:blur(16px) saturate(1.25);backdrop-filter:blur(16px) saturate(1.25);box-shadow:0 12px 40px rgba(0,0,0,.35);will-change:transform,opacity;opacity:clamp(0,(var(--fp) - .55)/.45,1);transform:translate3d(0,calc((1 - var(--fp))*36px),0)}
+  @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+    .hero-end-card{background:rgba(8,8,8,.80)}
+  }
+  .hero-end-card .nowrap{display:block;white-space:nowrap}
+  .hero-end-card .mob-br{display:none}
+  @media (max-width:640px){.hero-end-card{font-size:clamp(.68rem,3.2vw,.8rem);padding:.8rem .9rem}.hero-end{padding:0 1rem 2rem}}
+  /* ADDITIVE: bulletproof end-card fit — text scales with the card itself, cannot overflow at any width */
+  @media (max-width:900px){
+    .hero-end-card{container-type:inline-size;width:100%}
+    .hero-end-card .nowrap{font-size:3.8cqi}
+  }
+  .hero-end-card em{color:var(--acc);font-style:normal;font-weight:800}
+  @media (prefers-reduced-motion: reduce){
+    .hero-end{position:static;display:block;margin-top:1rem}
+    .hero-end-card{opacity:1;transform:none}
+  }
+  /* ADDITIVE: mobile + touch refinements — desktop rules above untouched */
+  .sticky{height:100vh;height:100dvh}
+  @media (max-width:640px){
+    nav.glass-nav{padding:.5rem 1rem}
+    .brand-logo{height:22px}
+    .hero-copy{padding:5rem 1rem 2rem}
+    .stats{gap:1rem 1.5rem;margin-top:1.2rem}
+    nav.glass-nav,.glass-panel,.glass-stats,.hero-end-card{-webkit-backdrop-filter:blur(10px) saturate(1.2);backdrop-filter:blur(10px) saturate(1.2)}
+    .bb-game-sec{padding:3rem 1rem 4rem}
+    .site-footer-inner{padding:2rem 1rem 2.5rem}
+    /* mobile: uniform body-scale type — last line may wrap here only */
+    .hero-end-card{font-size:1.05rem}
+    .hero-end-card .nowrap{white-space:normal;font-size:inherit}
+    .hero-end-card .mob-br{display:block}
+  }
+  @media (max-height:500px){
+    .hero-copy{padding:4rem 1rem 1.2rem}
+    h1{font-size:clamp(1.8rem,6vw,2.6rem)}
+    .h1-top{font-size:clamp(1rem,3vw,1.4rem)}
+    .stats{margin-top:1rem}
+    .cta-row{margin-top:1rem}
+  }
+  @media (pointer:coarse){
+    nav .btn{padding:.75rem 1.15rem;font-size:.9rem}
+    .cta-row .btn{padding:.9rem 1.5rem}
+    .site-footer-links a{padding:.6rem 0}
+  }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<nav class="glass-nav">
+  <div class="brand"><img class="brand-logo" src="logo.png" alt="Early Bitcoins"></div>
+  <div class="links"></div>
+  <a class="btn glass-button" href="mailto:waitlist@earlybitcoins.example?subject=Wholecoiner%20waitlist">Join waitlist</a>
+</nav>
+
+<div class="scrub-wrap" id="wrap">
+  <div class="sticky">
+    <!-- CHANGED: explicit preload + disable PIP/remote + poster fallback slot -->
+    <video class="bg" id="bgvid" muted playsinline preload="auto" disablepictureinpicture disableremoteplayback>
+      <source src="Hand_flipping_BTC_mobile.mp4" type="video/mp4" media="(max-width: 640px)">
+      <source src="Hand_flipping_BTC_animation.mp4" type="video/mp4">
+    </video>
+    <div class="shade"></div>
+    <div class="hero-copy">
+      <div class="glass-panel hero-glass" data-fx="1">
+        <h1><span class="h1-top">Making everyone a</span><em>wholecoiner.</em></h1>
+      </div>
+      <div class="cta-row" data-fx="2">
+        <a class="btn glass-button" href="mailto:waitlist@earlybitcoins.example?subject=Wholecoiner%20waitlist">Lock today's price</a>
+      </div>
+      <div class="stats glass-stats" data-fx="3">
+        <div><b>8%</b>interest rate</div>
+        <div><b>1 to 7 years</b>to pay</div>
+        <div><b>0.1 to 1+ BTC</b>to finance</div>
+      </div>
+      <div class="hero-end">
+        <div class="glass-panel hero-end-card">Your parents built generational wealth<br>with a mortgage on a house. <span class="nowrap">You’re building yours<span class="mob-br"></span> with a mortgage on <em>Bitcoin</em>.</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADDITIVE: brick-breaker game (BTC vs Euro) inside the existing black placeholder.
+     Adapted from departure-mono "Deparkanoid" (MIT (c) Helena Zhang & Tobias Fried). -->
+<div class="next-section">
+  <section class="bb-game-sec" aria-labelledby="bb-title">
+    <h2 class="bb-title" id="bb-title">Break fiat. Stack sats.</h2>
+    <div class="bb-canvas-wrap">
+      <canvas id="bb-game" width="880" height="600" tabindex="0" role="img" aria-label="Brick-breaker game. A pixel Bitcoin coin smashes pixel Euro bricks. Move the paddle with left and right arrow keys, mouse, or touch."></canvas>
+    </div>
+    <p class="bb-status" id="bb-status" role="status" aria-live="polite">Press Space or tap the game to launch the coin.</p>
+  </section>
+</div>
+
+<!-- ADDITIVE: site footer — update hrefs/addresses to the real ones when ready -->
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <div class="site-footer-links">
+      <a href="https://x.com/earlybitcoins">Twitter / X</a>
+      <a href="mailto:support@earlybitcoins.com">Support</a>
+      <a href="#">Privacy Policy</a>
+      <a href="#">Terms</a>
+    </div>
+    <p class="site-footer-fine">© 2026 Early Bitcoins. Not financial advice.</p>
+  </div>
+</footer>
+
+<!-- CHANGED: entire scrub engine rewritten — see script comments -->
+<script>
+(() => {
+  const vid = document.getElementById('bgvid');
+  const wrap = document.getElementById('wrap');
+  const prog = document.getElementById('progress');
+
+  // CHANGED: feature / environment detection (once, not per scroll)
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const canPlayMP4 = vid.canPlayType && vid.canPlayType('video/mp4') !== '';
+
+  // CHANGED: cached geometry — refreshed only on resize/load, never in scroll handler
+  const geo = { top: 0, height: 0, vh: window.innerHeight };
+  function measure() {
+    // offsetTop chain is stable; avoids getBoundingClientRect() per scroll (layout thrash)
+    let y = 0, el = wrap;
+    while (el) { y += el.offsetTop; el = el.offsetParent; }
+    geo.top = y;
+    geo.height = wrap.offsetHeight;
+    geo.vh = window.innerHeight;
+  }
+
+  const S = {
+    duration: NaN,
+    ready: false,      // true after loadedmetadata + canplay
+    ticking: false,    // rAF coalescing flag — only latest scroll wins
+    seeking: false,    // true between seek request and 'seeked'
+    queued: null,      // latest pending time while seeking
+  };
+  const EPS = 1 / 30; // CHANGED: skip insignificant seeks (~1 frame @30fps)
+  // ADDITIVE: touch devices use a coarser seek threshold (fewer decoder seeks, smoother scrub)
+  const coarseMQ = window.matchMedia('(pointer: coarse)');
+  // ADDITIVE: on touch, swap live backdrop-blur for solid fills (old mobile GPUs choke on blur over video)
+  try { if (coarseMQ.matches) document.documentElement.classList.add('lite-glass'); } catch (e) {}
+
+  // CHANGED: guarded setup — never use duration before metadata
+  vid.pause();
+  try { vid.load(); } catch (e) {} // CHANGED: kick preload explicitly (helps Safari)
+
+  vid.addEventListener('loadedmetadata', () => {
+    if (isFinite(vid.duration) && vid.duration > 0) {
+      S.duration = vid.duration;
+      measure();
+      requestUpdate(); // paint correct first frame for current scroll
+    }
+  });
+  vid.addEventListener('canplay', () => { S.ready = true; requestUpdate(); });
+  vid.addEventListener('canplaythrough', () => { S.ready = true; });
+  vid.addEventListener('error', () => {
+    // CHANGED: graceful fallback if format unsupported
+    prog.style.display = 'none';
+  }, true);
+
+  if (!canPlayMP4) {
+    // CHANGED: unsupported-format path — keep hero readable, no JS crash
+    prog.style.display = 'none';
+    return;
+  }
+
+  // CHANGED: reduced-motion — static frame, no scrub chase
+  if (reducedMotion) {
+    const showStatic = () => {
+      if (isFinite(vid.duration) && vid.duration > 0 && vid.readyState >= 1) {
+        try { vid.currentTime = Math.min(0.1, vid.duration * 0.05); } catch (e) {}
+      }
+    };
+    vid.addEventListener('loadedmetadata', showStatic, { once: true });
+    return;
+  }
+
+  // CHANGED: iOS warm-up — decoder must see a play() gesture before seeks are smooth
+  if (isIOS) {
+    const warm = () => {
+      vid.play().then(() => vid.pause()).catch(() => {});
+      window.removeEventListener('touchstart', warm);
+    };
+    window.addEventListener('touchstart', warm, { passive: true, once: true });
+  }
+
+  // CHANGED: single-flight seek — never stack seeks, keep only latest
+  // ADDITIVE: touch decoders also get time-throttled seeks (≤ ~7/s) + frame-grid snap
+  const SEEK_MIN_GAP = 150;
+  let lastSeekAt = 0;
+  function seekTo(t) {
+    if (!S.ready || !isFinite(S.duration)) return;
+    if (vid.readyState < 2) { S.queued = t; return; } // ADDITIVE: still buffering — hold target, 'canplay' resumes via requestUpdate
+    t = Math.min(Math.max(t, 0), S.duration - 0.05); // stay inside decodable range
+    t = Math.round(t * 30) / 30; // snap to frame grid: kills near-duplicate decodes
+    const cur = vid.currentTime;
+    if (Math.abs(t - cur) < (coarseMQ.matches ? 1 / 15 : EPS)) return; // CHANGED: skip duplicates
+    if (S.seeking) { S.queued = t; return; } // CHANGED: coalesce while busy
+    if (coarseMQ.matches) {
+      const now = performance.now(), wait = SEEK_MIN_GAP - (now - lastSeekAt);
+      if (wait > 8) { // too soon: keep only the latest target, flush it when the gap elapses
+        S.queued = t;
+        clearTimeout(S.flushT);
+        S.flushT = setTimeout(() => { const q = S.queued; S.queued = null; if (q !== null && q !== undefined) seekTo(q); }, wait);
+        return;
+      }
+      // gap nearly elapsed (<8ms): issue now rather than re-arming forever
+    }
+    S.seeking = true;
+    S.queued = null; // fresh seek issued: any older held target is obsolete
+    lastSeekAt = performance.now();
+    try {
+      // fastSeek is coarser; prefer accurate currentTime except as iOS fallback
+      if (isIOS && typeof vid.fastSeek === 'function' && Math.abs(t - cur) > 0.5) {
+        vid.fastSeek(t);
+      } else {
+        vid.currentTime = t;
+      }
+    } catch (e) { S.seeking = false; }
+  }
+  vid.addEventListener('seeked', () => {
+    S.seeking = false;
+    if (S.queued !== null) {
+      const q = S.queued; S.queued = null;
+      seekTo(q); // reverse-scroll safe: queued is always the newest target
+    }
+  });
+
+  function render() {
+    S.ticking = false;
+    if (!isFinite(S.duration)) return;
+    // CHANGED: normalized progress from cached dims — no layout read here
+    // progress = (scrollY - sectionTop) / (sectionHeight - viewportHeight), clamped 0..1
+    const max = Math.max(geo.height - geo.vh, 1);
+    let p = (window.scrollY - geo.top) / max;
+    p = p < 0 ? 0 : p > 1 ? 1 : p;
+    // CHANGED: progress bar via transform (compositor only)
+    prog.style.transform = 'scaleX(' + p + ')';
+    seekTo(p * S.duration);
+  }
+  function requestUpdate() {
+    if (!S.ticking) { S.ticking = true; requestAnimationFrame(render); }
+  }
+
+  // CHANGED: passive scroll + resize-only remeasure
+  window.addEventListener('scroll', requestUpdate, { passive: true });
+  let rzT = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(rzT);
+    rzT = setTimeout(() => { measure(); requestUpdate(); }, 100);
+  });
+  window.addEventListener('orientationchange', () => {
+    setTimeout(() => { measure(); requestUpdate(); }, 200);
+  });
+  window.addEventListener('load', () => { measure(); requestUpdate(); });
+
+  measure();
+  requestUpdate();
+})();
+</script>
+
+<!-- ADDITIVE: foreground text motion only — background scrub script above is untouched -->
+<script>
+(() => {
+  const wrap = document.getElementById('wrap');
+  const hero = document.querySelector('.hero-copy');
+  if (!wrap || !hero) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; // static readable text
+  let top = 0, total = 1, ticking = false;
+  function measureFx() {
+    let y = 0, el = wrap;
+    while (el) { y += el.offsetTop; el = el.offsetParent; }
+    top = y;
+    total = Math.max(wrap.offsetHeight - window.innerHeight, 1);
+  }
+  function renderFx() {
+    ticking = false;
+    let p = (window.scrollY - top) / total;
+    p = p < 0 ? 0 : p > 1 ? 1 : p;
+    // eased foreground phase: fully readable until ~35% of the scrub, softly exits by ~75%
+    const t = (p - 0.35) / 0.40;
+    const c = t < 0 ? 0 : t > 1 ? 1 : t;
+    const fp = c * c * (3 - 2 * c); // smoothstep — compositor-only via CSS var
+    hero.style.setProperty('--fp', fp.toFixed(3));
+  }
+  function requestFx() {
+    if (!ticking) { ticking = true; requestAnimationFrame(renderFx); }
+  }
+  let rzT = null;
+  window.addEventListener('scroll', requestFx, { passive: true });
+  window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { measureFx(); requestFx(); }, 100); });
+  window.addEventListener('load', () => { measureFx(); requestFx(); });
+  measureFx();
+  requestFx();
+})();
+</script>
+
+<!-- ADDITIVE: BTC-vs-Euro brick-breaker. Self-contained vanilla Canvas (no new dependencies).
+     Gameplay adapted from departure-mono "Deparkanoid" (MIT (c) Helena Zhang & Tobias Fried).
+     Dimensions/physics mirror the original: 880x600 arena, 23px ball (+1px for logo legibility),
+     99x22 paddle, 80x22 bricks, speed 9.5 (5% slower than original 10). Only the sprites changed (pixel BTC coin, pixel EUR bricks). -->
+<script>
+(() => {
+  'use strict';
+  const canvas = document.getElementById('bb-game');
+  const sec = canvas ? canvas.closest('.bb-game-sec') : null;
+  const statusEl = document.getElementById('bb-status');
+  if (!canvas || !sec) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  ctx.imageSmoothingEnabled = false;
+
+  /* ---- dimensions & tuning: identical to derparkanoid.tsx ---- */
+  const W = 880, H = 600;
+  const BALL = 23, R = BALL / 2, SPEED = 9.5; // +1px coin (logo legibility), 5% slower than original 10
+  const PAD_W = 99, PAD_H = 22, PAD_SPEED = 16, PAD_Y = H - PAD_H;
+  const PAD_MIN = PAD_H / 2, PAD_MAX = W - PAD_W - PAD_H / 2;
+  const BR_W = 80, BR_H = 22, BR_SCORE = 50;
+  const INK = '#0b0b0b', PAPER = '#e8e4dc', DARK = '#232323';
+  const COIN = '#f7931a', COIN_RIM = '#8a4d0b';
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---- hand-authored pixel glyphs (deterministic on every platform) ----
+     "." = transparent, "#" = ink. BTC is 7x9 drawn at 2x (14x18) on the 22px coin.
+     EUR is 7x9 drawn at 2x (14x18), centered in each 80x22 brick. */
+  const BTC = [
+    '.##....',
+    '.#####.',
+    '.##..#.',
+    '.##..#.',
+    '.#####.',
+    '.##..#.',
+    '.##..#.',
+    '.#####.',
+    '.##....',
+  ];
+  const EUR = [
+    '..###..',
+    '.#...#.',
+    '#......',
+    '#####..',
+    '#......',
+    '#####..',
+    '#......',
+    '.#...#.',
+    '..###..',
+  ];
+
+  /* ---- brick map: same invader layout as the original (d = dark, s = light) ---- */
+  const MAP = [
+    '..d.....d..',
+    '..d.....d..',
+    '...d...d...',
+    '...d...d...',
+    '..sssssss..',
+    '..sssssss..',
+    '.ssdsssdss.',
+    '.ssdsssdss.',
+    'sssssssssss',
+    'sssssssssss',
+    'sssssssssss',
+    'sssssssssss',
+    'sss.....sss',
+    's.s.....s.s',
+    '...ss.ss...',
+    '...ss.ss...',
+  ];
+
+  /* ---- prerendered sprites (crisp: drawn 1px at a time, upscaled 1:1) ---- */
+  function buildCoin() {
+    const c = document.createElement('canvas'); c.width = c.height = BALL;
+    const g = c.getContext('2d');
+    const half = BALL / 2, rr = R - 1;
+    for (let y = 0; y < BALL; y++) for (let x = 0; x < BALL; x++) {
+      const d = Math.hypot(x + 0.5 - half, y + 0.5 - half);
+      if (d <= rr) { g.fillStyle = d > rr - 1.5 ? COIN_RIM : COIN; g.fillRect(x, y, 1, 1); }
+    }
+    const gx = Math.round((BALL - 14) / 2), gy = Math.round((BALL - 18) / 2);
+    g.fillStyle = INK;
+    BTC.forEach((row, ry) => { for (let rx = 0; rx < row.length; rx++) if (row[rx] === '#') g.fillRect(gx + rx * 2, gy + ry * 2, 2, 2); });
+    return c;
+  }
+  function buildEuro(ink) {
+    const c = document.createElement('canvas'); c.width = 14; c.height = 18;
+    const g = c.getContext('2d'); g.fillStyle = ink;
+    EUR.forEach((row, ry) => { for (let rx = 0; rx < row.length; rx++) if (row[rx] === '#') g.fillRect(rx * 2, ry * 2, 2, 2); });
+    return c;
+  }
+  const coinSprite = buildCoin();
+  const euroLight = buildEuro(PAPER); // € on dark bricks
+  const euroDark = buildEuro(INK);    // € on light bricks
+
+  /* ---- state (mirrors original: idle until launch, infinite balls, win when empty) ---- */
+  let bricks = [], particles = [], score = 0;
+  let state = 'idle'; // 'idle' | 'playing' | 'win'
+  let paused = false;
+  const paddle = { x: W / 2 - PAD_W / 2 };
+  const ball = { x: W / 2, y: (H * 5) / 9, vx: 0, vy: 0 };
+  const keys = new Set();
+
+  function buildBricks() {
+    bricks = [];
+    MAP.forEach((row, r) => {
+      for (let c = 0; c < row.length; c++) {
+        if (row[c] === 'd' || row[c] === 's') bricks.push({ x: c * BR_W, y: r * BR_H, dark: row[c] === 'd' });
+      }
+    });
+  }
+  function parkBall() {
+    ball.x = W / 2; ball.y = (H * 5) / 9;
+    let dx = Math.random() * 2 - 1, dy = Math.random();
+    if (dy < 0.25) dy = 0.25; // tiny nudge so launch is never near-horizontal
+    const m = Math.hypot(dx, dy) || 1;
+    ball.vx = (dx / m) * SPEED; ball.vy = (dy / m) * SPEED;
+  }
+  function say(msg) { if (statusEl) statusEl.textContent = msg; }
+  function fullReset() {
+    score = 0; particles = []; buildBricks(); parkBall();
+    state = 'idle'; paused = false;
+    say('Game reset. Press Space or tap the game to launch the coin.');
+  }
+  function launch() {
+    if (state === 'win') fullReset();
+    if (paused) paused = false;
+    parkBall(); state = 'playing';
+    say('Coin launched. Score ' + score + '.');
+    canvas.focus({ preventScroll: true });
+  }
+
+  /* ---- collisions: same AABB tests as the original ---- */
+  function edges() {
+    if (ball.x < R || ball.x > W - R) {
+      ball.x = Math.min(Math.max(ball.x, R), W - R);
+      ball.vx *= -1;
+    }
+    if (ball.y < R) {
+      ball.y = Math.max(ball.y, R);
+      ball.vy *= -1;
+    }
+    if (ball.y > H) { // lost: park a fresh coin, keep score (original has infinite balls)
+      parkBall(); state = 'idle';
+      say('Coin lost. Score ' + score + '. Press Space to relaunch.');
+    }
+  }
+  function paddleHit() {
+    if (ball.y + R > PAD_Y && ball.x > paddle.x && ball.x < paddle.x + PAD_W && ball.vy > 0) {
+      ball.y = PAD_Y - R;
+      ball.vy = -Math.abs(ball.vy);
+      // anti-flat nudge: keeps bounces lively, preserves SPEED (original could lock into loops)
+      if (Math.abs(ball.vx) < 1.5) ball.vx = (ball.vx === 0 ? (Math.random() < 0.5 ? -1 : 1) : Math.sign(ball.vx)) * 1.5;
+      const m = Math.hypot(ball.vx, ball.vy) || SPEED;
+      ball.vx = (ball.vx / m) * SPEED; ball.vy = (ball.vy / m) * SPEED;
+      if (ball.vy > -3) { ball.vy = -3; ball.vx = Math.sign(ball.vx || 1) * Math.sqrt(SPEED * SPEED - 9); }
+    }
+  }
+  function brickHits() {
+    let hit = false;
+    for (let i = bricks.length - 1; i >= 0; i--) {
+      const b = bricks[i];
+      if (ball.x + R > b.x && ball.x - R < b.x + BR_W && ball.y - R < b.y + BR_H && ball.y + R > b.y) {
+        hit = true; score += BR_SCORE;
+        if (!reduced) for (let k = 0; k < 8; k++) particles.push({ x: b.x + BR_W / 2, y: b.y + BR_H / 2, vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6, life: 24, c: b.dark ? PAPER : INK });
+        bricks.splice(i, 1);
+      }
+    }
+    if (hit) ball.vy *= -1;
+    if (bricks.length === 0 && state === 'playing') {
+      state = 'win';
+      say('You win! Final score ' + score + '. Press R or right-click to play again.');
+    }
+  }
+
+  /* ---- per-frame update: substepped so the coin can't tunnel through bricks ---- */
+  function step() {
+    if (keys.has('left')) paddle.x -= PAD_SPEED;
+    if (keys.has('right')) paddle.x += PAD_SPEED;
+    paddle.x = Math.min(Math.max(paddle.x, PAD_MIN), PAD_MAX);
+    particles = particles.filter(pt => --pt.life > 0);
+    particles.forEach(pt => { pt.x += pt.vx; pt.y += pt.vy; });
+    if (state !== 'playing' || paused) return;
+    const n = Math.max(1, Math.ceil(SPEED / 5));
+    for (let s = 0; s < n && state === 'playing'; s++) {
+      ball.x += ball.vx / n; ball.y += ball.vy / n;
+      edges(); if (state !== 'playing') break;
+      paddleHit(); brickHits();
+    }
+  }
+
+  /* ---- render ---- */
+  function drawBrick(b) {
+    ctx.lineWidth = 4; ctx.strokeStyle = '#000';
+    ctx.fillStyle = b.dark ? DARK : PAPER;
+    ctx.fillRect(b.x, b.y, BR_W, BR_H);
+    ctx.strokeRect(b.x, b.y, BR_W, BR_H);
+    ctx.fillStyle = 'rgba(255,255,255,0.31)';
+    ctx.fillRect(b.x + 2, b.y + 2, BR_W - 4, 3);
+    ctx.fillRect(b.x + 2, b.y + 5, 3, BR_H - 7);
+    ctx.fillStyle = '#333';
+    ctx.fillRect(b.x + 2, b.y + BR_H - 5, BR_W - 4, 3);
+    ctx.fillRect(b.x + BR_W - 5, b.y + 2, 3, BR_H - 7);
+    ctx.drawImage(b.dark ? euroLight : euroDark, Math.round(b.x + (BR_W - 14) / 2), b.y + 2);
+  }
+  function draw() {
+    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+    bricks.forEach(drawBrick);
+    particles.forEach(pt => { ctx.globalAlpha = Math.max(pt.life / 24, 0); ctx.fillStyle = pt.c; ctx.fillRect(Math.round(pt.x), Math.round(pt.y), 3, 3); });
+    ctx.globalAlpha = 1;
+    // paddle (same 99x22 footprint as original paddle.png)
+    ctx.fillStyle = PAPER; ctx.fillRect(Math.round(paddle.x), PAD_Y, PAD_W, PAD_H);
+    ctx.fillStyle = '#fff'; ctx.fillRect(Math.round(paddle.x), PAD_Y, PAD_W, 2);
+    ctx.fillStyle = '#555'; ctx.fillRect(Math.round(paddle.x), PAD_Y + PAD_H - 3, PAD_W, 3);
+    // coin: 23x23 footprint (original ball.png was 22x22, +1px for logo legibility)
+    ctx.drawImage(coinSprite, Math.round(ball.x - R), Math.round(ball.y - R));
+    // HUD score, top-left like the original
+    ctx.fillStyle = '#a8a29e'; ctx.font = '16px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText('SCORE', 8, 6); ctx.fillText(String(score).padStart(5, '0'), 8, 26);
+    const blink = reduced || performance.now() % 1000 < 500;
+    if (state === 'idle' && blink) {
+      ctx.textAlign = 'center'; ctx.fillText('SPACE / CLICK TO LAUNCH', W / 2, 400);
+    }
+    if (state === 'win') {
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#ffb74d'; ctx.font = '88px ui-monospace,Menlo,Consolas,monospace';
+      ctx.fillText('YOU WIN', W / 2, 244);
+      if (blink) { ctx.fillStyle = COIN; ctx.font = '33px ui-monospace,Menlo,Consolas,monospace'; ctx.fillText('CLICK OR SPACE TO PLAY AGAIN', W / 2 + 8, 328); }
+    }
+    if (paused && state === 'playing') {
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = PAPER; ctx.font = '44px ui-monospace,Menlo,Consolas,monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('PAUSED', W / 2, H / 2);
+    }
+  }
+  function loop() { if (bbVisible) { step(); draw(); } requestAnimationFrame(loop); }
+
+  /* ---- controls: keyboard like the original + A/D; mouse & touch preserved ---- */
+  function inScope() { return sec.contains(document.activeElement); }
+  document.addEventListener('keydown', e => {
+    if (!inScope()) return;
+    const k = e.key;
+    if (k === 'ArrowLeft' || k === 'ArrowRight' || k === ' ') e.preventDefault();
+    if (k === 'ArrowLeft' || k === 'a' || k === 'A') keys.add('left');
+    if (k === 'ArrowRight' || k === 'd' || k === 'D') keys.add('right');
+    if (k === ' ' && !e.repeat && (state !== 'playing' || paused)) launch();
+    if ((k === 'p' || k === 'P') && state === 'playing') { paused = !paused; say(paused ? 'Paused. Score ' + score + '.' : 'Resumed.'); }
+    if (k === 'r' || k === 'R') fullReset();
+  });
+  document.addEventListener('keyup', e => {
+    const k = e.key;
+    if (k === 'ArrowLeft' || k === 'a' || k === 'A') keys.delete('left');
+    if (k === 'ArrowRight' || k === 'd' || k === 'D') keys.delete('right');
+  });
+  function pointerX(clientX) {
+    const r = canvas.getBoundingClientRect();
+    return ((clientX - r.left) / Math.max(r.width, 1)) * W;
+  }
+  function slideTo(clientX) {
+    paddle.x = Math.min(Math.max(pointerX(clientX) - PAD_W / 2, PAD_MIN), PAD_MAX);
+  }
+  canvas.addEventListener('mousemove', e => { slideTo(e.clientX); });
+  canvas.addEventListener('click', () => { canvas.focus({ preventScroll: true }); launch(); });
+  let touchMode = null, touchSX = 0, touchSY = 0; // ADDITIVE: gesture direction lock (x = paddle, y = page scroll)
+  canvas.addEventListener('touchstart', e => {
+    const t = e.touches[0]; touchMode = null; touchSX = t.clientX; touchSY = t.clientY;
+    canvas.focus({ preventScroll: true }); slideTo(t.clientX); if (state !== 'playing') launch();
+  }, { passive: true });
+  canvas.addEventListener('touchmove', e => {
+    const t = e.touches[0];
+    if (touchMode === null) touchMode = Math.abs(t.clientX - touchSX) >= Math.abs(t.clientY - touchSY) ? 'x' : 'y';
+    if (touchMode === 'x') { e.preventDefault(); slideTo(t.clientX); }
+  }, { passive: false });
+  canvas.addEventListener('contextmenu', e => { e.preventDefault(); fullReset(); });
+  const btnStart = document.getElementById('bb-start');
+  const btnPause = document.getElementById('bb-pause');
+  const btnReset = document.getElementById('bb-reset');
+  if (btnStart) btnStart.addEventListener('click', launch);
+  if (btnPause) btnPause.addEventListener('click', () => {
+    if (state !== 'playing') return;
+    paused = !paused; say(paused ? 'Paused. Score ' + score + '.' : 'Resumed.');
+  });
+  if (btnReset) btnReset.addEventListener('click', fullReset);
+
+  // ADDITIVE: skip all game work while the canvas is offscreen (mobile battery/CPU)
+  let bbVisible = true;
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(es => { bbVisible = es.length ? es[0].isIntersecting : true; }, { threshold: 0 }).observe(canvas);
+  }
+
+  buildBricks(); parkBall();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
