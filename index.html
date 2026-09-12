@@ -19,10 +19,13 @@
   .btn.ghost{background:transparent;color:#fff;border:1px solid #333}
   /* CHANGED: progress via transform (no layout) instead of width% */
   .progress{position:fixed;top:0;left:0;height:3px;width:100%;background:var(--acc);z-index:30;transform-origin:0 50%;transform:scaleX(0)}
-  .scrub-wrap{height:800vh;position:relative}
+  .scrub-wrap{height:400vh;height:400svh;position:relative}
+  @media (max-width:640px){.scrub-wrap{height:300vh;height:300svh}}
   .sticky{position:sticky;top:0;height:100vh;overflow:hidden;background:#000}
   /* CHANGED: stable video — no per-frame filter, GPU layer, fixed aspect to avoid shift */
-  video.bg{width:100%;height:100%;object-fit:cover;display:block;background:#000;transform:translateZ(0);backface-visibility:hidden}
+  video.bg{position:relative;width:100%;height:100%;object-fit:cover;display:block;background:#000;transform:translateZ(0);backface-visibility:hidden}
+  .hero-poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .video-fallback video.bg{visibility:hidden}
   .shade{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.55),rgba(0,0,0,.2) 35%,rgba(0,0,0,.35) 65%,var(--bg) 98%);pointer-events:none}
   .hero-copy{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:6rem 1.5rem 3.5rem;max-width:72rem;margin:0 auto}
   .pill{display:inline-block;font-size:.78rem;border:1px solid #333;border-radius:999px;padding:.35rem .8rem;color:var(--mut);margin-bottom:1rem;background:rgba(0,0,0,.5)}
@@ -112,7 +115,7 @@
     .hero-end-card{opacity:1;transform:none}
   }
   /* ADDITIVE: mobile + touch refinements — desktop rules above untouched */
-  .sticky{height:100vh;height:100dvh}
+  .sticky{height:100vh;height:100svh}
   @media (max-width:640px){
     nav.glass-nav{padding:.5rem 1rem}
     .brand-logo{height:22px}
@@ -138,6 +141,17 @@
     .cta-row .btn{padding:.9rem 1.5rem}
     .site-footer-links a{padding:.6rem 0}
   }
+  /* A static hero stays readable without making visitors scroll through empty space. */
+  @media (prefers-reduced-motion: reduce){
+    .scrub-wrap{height:auto}
+    .sticky{position:relative;height:auto;min-height:100vh;min-height:100svh}
+    video.bg{display:none}
+    .hero-copy{position:relative;min-height:100vh;min-height:100svh}
+    .hero-copy>[data-fx]{will-change:auto}
+    .hero-end{padding:0;align-self:flex-start}
+    .hero-end-card{will-change:auto}
+    .hero-end-card .nowrap{white-space:normal}
+  }
 </style>
 </head>
 <body>
@@ -150,11 +164,10 @@
 
 <div class="scrub-wrap" id="wrap">
   <div class="sticky">
-    <!-- CHANGED: explicit preload + disable PIP/remote + poster fallback slot -->
-    <video class="bg" id="bgvid" muted playsinline preload="auto" disablepictureinpicture disableremoteplayback>
-      <source src="Hand_flipping_BTC_mobile.mp4" type="video/mp4" media="(max-width: 640px)">
-      <source src="Hand_flipping_BTC_animation.mp4" type="video/mp4">
-    </video>
+    <img class="hero-poster" src="assets/hand-btc-poster.jpg" alt="" aria-hidden="true" fetchpriority="high">
+    <video class="bg" id="bgvid" muted playsinline preload="none" disablepictureinpicture disableremoteplayback
+      poster="assets/hand-btc-poster.jpg" aria-hidden="true"
+      data-desktop-src="assets/hand-btc-desktop-scrub.mp4" data-mobile-src="assets/hand-btc-mobile-scrub.mp4"></video>
     <div class="shade"></div>
     <div class="hero-copy">
       <div class="glass-panel hero-glass" data-fx="1">
@@ -200,197 +213,8 @@
   </div>
 </footer>
 
-<!-- CHANGED: entire scrub engine rewritten — see script comments -->
-<script>
-(() => {
-  const vid = document.getElementById('bgvid');
-  const wrap = document.getElementById('wrap');
-  const prog = document.getElementById('progress');
-
-  // CHANGED: feature / environment detection (once, not per scroll)
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const canPlayMP4 = vid.canPlayType && vid.canPlayType('video/mp4') !== '';
-
-  // CHANGED: cached geometry — refreshed only on resize/load, never in scroll handler
-  const geo = { top: 0, height: 0, vh: window.innerHeight };
-  function measure() {
-    // offsetTop chain is stable; avoids getBoundingClientRect() per scroll (layout thrash)
-    let y = 0, el = wrap;
-    while (el) { y += el.offsetTop; el = el.offsetParent; }
-    geo.top = y;
-    geo.height = wrap.offsetHeight;
-    geo.vh = window.innerHeight;
-  }
-
-  const S = {
-    duration: NaN,
-    ready: false,      // true after loadedmetadata + canplay
-    ticking: false,    // rAF coalescing flag — only latest scroll wins
-    seeking: false,    // true between seek request and 'seeked'
-    queued: null,      // latest pending time while seeking
-  };
-  const EPS = 1 / 30; // CHANGED: skip insignificant seeks (~1 frame @30fps)
-  // ADDITIVE: touch devices use a coarser seek threshold (fewer decoder seeks, smoother scrub)
-  const coarseMQ = window.matchMedia('(pointer: coarse)');
-  // ADDITIVE: on touch, swap live backdrop-blur for solid fills (old mobile GPUs choke on blur over video)
-  try { if (coarseMQ.matches) document.documentElement.classList.add('lite-glass'); } catch (e) {}
-
-  // CHANGED: guarded setup — never use duration before metadata
-  vid.pause();
-  try { vid.load(); } catch (e) {} // CHANGED: kick preload explicitly (helps Safari)
-
-  vid.addEventListener('loadedmetadata', () => {
-    if (isFinite(vid.duration) && vid.duration > 0) {
-      S.duration = vid.duration;
-      measure();
-      requestUpdate(); // paint correct first frame for current scroll
-    }
-  });
-  vid.addEventListener('canplay', () => { S.ready = true; requestUpdate(); });
-  vid.addEventListener('canplaythrough', () => { S.ready = true; });
-  vid.addEventListener('error', () => {
-    // CHANGED: graceful fallback if format unsupported
-    prog.style.display = 'none';
-  }, true);
-
-  if (!canPlayMP4) {
-    // CHANGED: unsupported-format path — keep hero readable, no JS crash
-    prog.style.display = 'none';
-    return;
-  }
-
-  // CHANGED: reduced-motion — static frame, no scrub chase
-  if (reducedMotion) {
-    const showStatic = () => {
-      if (isFinite(vid.duration) && vid.duration > 0 && vid.readyState >= 1) {
-        try { vid.currentTime = Math.min(0.1, vid.duration * 0.05); } catch (e) {}
-      }
-    };
-    vid.addEventListener('loadedmetadata', showStatic, { once: true });
-    return;
-  }
-
-  // CHANGED: iOS warm-up — decoder must see a play() gesture before seeks are smooth
-  if (isIOS) {
-    const warm = () => {
-      vid.play().then(() => vid.pause()).catch(() => {});
-      window.removeEventListener('touchstart', warm);
-    };
-    window.addEventListener('touchstart', warm, { passive: true, once: true });
-  }
-
-  // CHANGED: single-flight seek — never stack seeks, keep only latest
-  // ADDITIVE: touch decoders also get time-throttled seeks (≤ ~7/s) + frame-grid snap
-  const SEEK_MIN_GAP = 150;
-  let lastSeekAt = 0;
-  function seekTo(t) {
-    if (!S.ready || !isFinite(S.duration)) return;
-    if (vid.readyState < 2) { S.queued = t; return; } // ADDITIVE: still buffering — hold target, 'canplay' resumes via requestUpdate
-    t = Math.min(Math.max(t, 0), S.duration - 0.05); // stay inside decodable range
-    t = Math.round(t * 30) / 30; // snap to frame grid: kills near-duplicate decodes
-    const cur = vid.currentTime;
-    if (Math.abs(t - cur) < (coarseMQ.matches ? 1 / 15 : EPS)) return; // CHANGED: skip duplicates
-    if (S.seeking) { S.queued = t; return; } // CHANGED: coalesce while busy
-    if (coarseMQ.matches) {
-      const now = performance.now(), wait = SEEK_MIN_GAP - (now - lastSeekAt);
-      if (wait > 8) { // too soon: keep only the latest target, flush it when the gap elapses
-        S.queued = t;
-        clearTimeout(S.flushT);
-        S.flushT = setTimeout(() => { const q = S.queued; S.queued = null; if (q !== null && q !== undefined) seekTo(q); }, wait);
-        return;
-      }
-      // gap nearly elapsed (<8ms): issue now rather than re-arming forever
-    }
-    S.seeking = true;
-    S.queued = null; // fresh seek issued: any older held target is obsolete
-    lastSeekAt = performance.now();
-    try {
-      // fastSeek is coarser; prefer accurate currentTime except as iOS fallback
-      if (isIOS && typeof vid.fastSeek === 'function' && Math.abs(t - cur) > 0.5) {
-        vid.fastSeek(t);
-      } else {
-        vid.currentTime = t;
-      }
-    } catch (e) { S.seeking = false; }
-  }
-  vid.addEventListener('seeked', () => {
-    S.seeking = false;
-    if (S.queued !== null) {
-      const q = S.queued; S.queued = null;
-      seekTo(q); // reverse-scroll safe: queued is always the newest target
-    }
-  });
-
-  function render() {
-    S.ticking = false;
-    if (!isFinite(S.duration)) return;
-    // CHANGED: normalized progress from cached dims — no layout read here
-    // progress = (scrollY - sectionTop) / (sectionHeight - viewportHeight), clamped 0..1
-    const max = Math.max(geo.height - geo.vh, 1);
-    let p = (window.scrollY - geo.top) / max;
-    p = p < 0 ? 0 : p > 1 ? 1 : p;
-    // CHANGED: progress bar via transform (compositor only)
-    prog.style.transform = 'scaleX(' + p + ')';
-    seekTo(p * S.duration);
-  }
-  function requestUpdate() {
-    if (!S.ticking) { S.ticking = true; requestAnimationFrame(render); }
-  }
-
-  // CHANGED: passive scroll + resize-only remeasure
-  window.addEventListener('scroll', requestUpdate, { passive: true });
-  let rzT = null;
-  window.addEventListener('resize', () => {
-    clearTimeout(rzT);
-    rzT = setTimeout(() => { measure(); requestUpdate(); }, 100);
-  });
-  window.addEventListener('orientationchange', () => {
-    setTimeout(() => { measure(); requestUpdate(); }, 200);
-  });
-  window.addEventListener('load', () => { measure(); requestUpdate(); });
-
-  measure();
-  requestUpdate();
-})();
-</script>
-
-<!-- ADDITIVE: foreground text motion only — background scrub script above is untouched -->
-<script>
-(() => {
-  const wrap = document.getElementById('wrap');
-  const hero = document.querySelector('.hero-copy');
-  if (!wrap || !hero) return;
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return; // static readable text
-  let top = 0, total = 1, ticking = false;
-  function measureFx() {
-    let y = 0, el = wrap;
-    while (el) { y += el.offsetTop; el = el.offsetParent; }
-    top = y;
-    total = Math.max(wrap.offsetHeight - window.innerHeight, 1);
-  }
-  function renderFx() {
-    ticking = false;
-    let p = (window.scrollY - top) / total;
-    p = p < 0 ? 0 : p > 1 ? 1 : p;
-    // eased foreground phase: fully readable until ~35% of the scrub, softly exits by ~75%
-    const t = (p - 0.35) / 0.40;
-    const c = t < 0 ? 0 : t > 1 ? 1 : t;
-    const fp = c * c * (3 - 2 * c); // smoothstep — compositor-only via CSS var
-    hero.style.setProperty('--fp', fp.toFixed(3));
-  }
-  function requestFx() {
-    if (!ticking) { ticking = true; requestAnimationFrame(renderFx); }
-  }
-  let rzT = null;
-  window.addEventListener('scroll', requestFx, { passive: true });
-  window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { measureFx(); requestFx(); }, 100); });
-  window.addEventListener('load', () => { measureFx(); requestFx(); });
-  measureFx();
-  requestFx();
-})();
-</script>
+<!-- One eased timeline drives the background and foreground. -->
+<script src="scripts/hero-scroll.js"></script>
 
 <!-- ADDITIVE: BTC-vs-Euro brick-breaker. Self-contained vanilla Canvas (no new dependencies).
      Gameplay adapted from departure-mono "Deparkanoid" (MIT (c) Helena Zhang & Tobias Fried).
